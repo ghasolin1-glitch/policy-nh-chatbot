@@ -145,11 +145,7 @@ class DBStore:
 store = DBStore(default_k=10)
 
 # =========================
-<<<<<<< HEAD
 # 💬 질의 함수 (Top 3 컨텍스트 버전)
-=======
-# 💬 질의 함수 (당신이 제시한 구조)
->>>>>>> aa0f0be655a05215704757f7944fac6dbd4edd8a
 # =========================
 def query(question: str) -> str:
     store.default_k = top_k  # UI 값 반영
@@ -157,7 +153,6 @@ def query(question: str) -> str:
     if not results:
         return "유사한 청크를 찾지 못했습니다. 질문을 더 구체적으로 입력해 주세요."
 
-<<<<<<< HEAD
     # ✅ 상위 3개의 청크를 모두 컨텍스트로 결합
     top_n = min(3, len(results))
     combined_context = "\n\n---\n\n".join(
@@ -170,26 +165,15 @@ def query(question: str) -> str:
 
 {combined_context}
     """.strip()
-=======
-    context = results[0].page_content
-    system = f"아래 내용을 바탕으로 사용자의 질문에 대답해줘.\n\n{context}"
->>>>>>> aa0f0be655a05215704757f7944fac6dbd4edd8a
 
     messages = [
         SystemMessage(system),
         HumanMessage(question)
     ]
-<<<<<<< HEAD
 
     resp = model.invoke(messages)
     return resp.content
 
-
-=======
-    resp = model.invoke(messages)
-    return resp.content
-
->>>>>>> aa0f0be655a05215704757f7944fac6dbd4edd8a
 # =========================
 # 📑 근거 표시
 # =========================
