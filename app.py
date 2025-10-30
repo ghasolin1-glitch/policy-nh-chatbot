@@ -1,10 +1,8 @@
-# app.py — 보험 약관 RAG 챗봇 (HTML UI + GPT-5 + Supabase pgvector, 모바일 대응 최종 완전버전)
 import os, json, time, numpy as np, psycopg, pandas as pd, streamlit as st
 from dotenv import load_dotenv
 from openai import OpenAI
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
-import streamlit.components.v1 as components
 
 # =========================
 # 🔧 환경 변수
@@ -24,11 +22,7 @@ model = ChatOpenAI(model="gpt-5", reasoning_effort="minimal", api_key=OPENAI_API
 # 📦 세션 상태
 # =========================
 if "messages" not in st.session_state:
-    st.session_state.messages = [
-        {"role": "assistant", "content": "안녕하세요! 무엇을 도와드릴까요?"}
-    ]
-if "input" not in st.session_state:
-    st.session_state.input = None
+    st.session_state.messages = [{"role": "assistant", "content": "안녕하세요! 무엇을 도와드릴까요?"}]
 
 # =========================
 # 📦 DB 연결 함수
@@ -45,12 +39,8 @@ DB_CONN = {
 
 SEARCH_SQL = """
 WITH q AS (SELECT %(vec)s::vector AS v)
-SELECT
-  pdf_filename,
-  COALESCE((metadata_json->>'pdf_path'), pdf_path) AS pdf_path,
-  page,
-  text,
-  (1 - (embedding <=> (SELECT v FROM q))) AS cosine_similarity
+SELECT pdf_filename, COALESCE((metadata_json->>'pdf_path'), pdf_path) AS pdf_path, 
+       page, text, (1 - (embedding <=> (SELECT v FROM q))) AS cosine_similarity
 FROM public.terms_chunks
 ORDER BY cosine_similarity DESC
 LIMIT %(k)s;
@@ -82,7 +72,6 @@ def generate_answer(question: str) -> str:
         df = fetch_topk_chunks(q_vec, 5)
         if df.empty:
             return "죄송하지만 관련 약관 내용을 찾지 못했습니다."
-
         context = "\n\n".join(df["text"].head(3))
         sys_prompt = f"""
         당신은 대한민국 보험 약관 전문 챗봇입니다.
@@ -98,146 +87,47 @@ def generate_answer(question: str) -> str:
         return f"⚠️ 오류가 발생했습니다: {e}"
 
 # =========================
-# 🖥️ HTML UI (Tailwind + JS)
+# 🎨 UI 구성 (Streamlit)
 # =========================
-chat_body_html = ''.join([
-    f"<div class='{'user-bubble' if m['role']=='user' else 'bot-bubble'} bubble'>{m['content']}</div>"
-    for m in st.session_state.messages
-])
-
-html_code = f"""
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script src="https://cdn.tailwindcss.com"></script>
+st.markdown("""
 <style>
-body {{
-  background-color: #f3f4f6;
-  font-family: 'Pretendard', 'Inter', sans-serif;
-  height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}}
-.chat-container {{
-  width: 100%;
-  max-width: 480px;
-  height: 95vh;
-  background: white;
-  border-radius: 10px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}}
-.chat-header {{
-  background-color: #2563eb;
-  color: white;
-  padding: 16px;
-}}
-.chat-body {{
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px;
-  background: white;
-}}
-.bubble {{
-  padding: 10px 14px;
-  border-radius: 20px;
-  margin-bottom: 10px;
-  max-width: 80%;
-  line-height: 1.5;
-  word-wrap: break-word;
-}}
-.user-bubble {{
-  background-color: #2563eb;
-  color: white;
-  border-bottom-right-radius: 4px;
-  margin-left: auto;
-}}
-.bot-bubble {{
-  background-color: #e5e7eb;
-  color: #111827;
-  border-bottom-left-radius: 4px;
-  margin-right: auto;
-}}
-.chat-input {{
-  border-top: 1px solid #e5e7eb;
-  padding: 12px;
-  display: flex;
-  gap: 8px;
-  position: sticky;
-  bottom: 0;
-  background-color: white;
-}}
-.chat-input input {{
-  flex: 1;
-  padding: 10px 14px;
-  border-radius: 999px;
-  border: 1px solid #d1d5db;
-  outline: none;
-}}
-.chat-input button {{
-  background-color: #2563eb;
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 44px;
-  height: 44px;
-  font-size: 1.2rem;
-}}
+body { background-color: #f3f4f6; font-family: Pretendard, Inter, sans-serif; }
+.chat-box {
+    background: white; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    width: 100%; max-width: 480px; margin: auto; padding: 16px;
+}
+.chat-header { background-color: #2563eb; color: white; padding: 16px; border-radius: 8px; margin-bottom: 12px; }
+.user-bubble {
+    background-color: #2563eb; color: white; border-radius: 20px; padding: 10px 14px;
+    margin-bottom: 8px; margin-left: auto; max-width: 80%;
+}
+.bot-bubble {
+    background-color: #e5e7eb; color: #111827; border-radius: 20px; padding: 10px 14px;
+    margin-bottom: 8px; margin-right: auto; max-width: 80%;
+}
 </style>
-</head>
-<body>
-<div class="chat-container">
-  <div class="chat-header">
-    <h1>약관챗봇</h1>
-    <p>NHLife | Made by 태훈,현철</p>
-  </div>
-  <div class="chat-body" id="chat-body">{chat_body_html}</div>
+""", unsafe_allow_html=True)
 
-  <form class="chat-input" id="chatForm" onsubmit="sendMessage(event)">
-    <input id="user_input" type="text" placeholder="상품에 대해 궁금한 점 질문해주세요." autocomplete="off" required>
-    <button type="submit">📤</button>
-  </form>
+with st.container():
+    st.markdown("<div class='chat-box'>", unsafe_allow_html=True)
+    st.markdown("<div class='chat-header'><h3>약관챗봇</h3><p>NHLife | Made by 태훈,현철</p></div>", unsafe_allow_html=True)
 
-  <script>
-  function sendMessage(event) {{
-    event.preventDefault();
-    const val = document.getElementById("user_input").value.trim();
-    if (!val) return;
-    // ✅ Streamlit Python으로 안전하게 전달
-    window.parent.postMessage({{
-      isStreamlitMessage: true,
-      type: "streamlit:setComponentValue",
-      value: val
-    }}, "*");
-    document.getElementById("user_input").value = "";
-  }}
-  </script>
-</div>
-</body>
-</html>
-"""
+    for msg in st.session_state.messages:
+        bubble_class = "user-bubble" if msg["role"] == "user" else "bot-bubble"
+        st.markdown(f"<div class='{bubble_class}'>{msg['content']}</div>", unsafe_allow_html=True)
 
-# =========================
-# 📩 HTML 렌더링 및 이벤트 수신
-# =========================
-input_text = components.html(html_code, height=800, scrolling=False, allow_scripts=True)
+    st.markdown("<hr>", unsafe_allow_html=True)
+    with st.form("chat_form", clear_on_submit=True):
+        user_input = st.text_input("", placeholder="상품에 대해 궁금한 점 질문해주세요.", label_visibility="collapsed")
+        submitted = st.form_submit_button("📤")
 
-# Streamlit이 내부적으로 메시지를 받으면 `input_text`가 문자열로 세팅됨
-if isinstance(input_text, str) and input_text.strip():
-    st.session_state.input = input_text.strip()
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # =========================
 # 💬 입력 처리
 # =========================
-if st.session_state.input:
-    user_input = st.session_state.input
+if submitted and user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
     answer = generate_answer(user_input)
     st.session_state.messages.append({"role": "assistant", "content": answer})
-    st.session_state.input = None
     st.rerun()
