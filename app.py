@@ -135,16 +135,6 @@ body {{
   color: white;
   padding: 16px;
 }}
-.chat-header h1 {{
-  font-size: 1.5rem;
-  font-weight: bold;
-  margin: 0;
-}}
-.chat-header p {{
-  font-size: 0.8rem;
-  color: #bfdbfe;
-  margin: 0;
-}}
 .chat-body {{
   flex: 1;
   overflow-y: auto;
@@ -204,24 +194,18 @@ body {{
     <h1>약관챗봇</h1>
     <p>NHLife | Made by 태훈,현철</p>
   </div>
-  <div class="chat-body" id="chat-body">{chat_body_html}</div>
-  <div class="chat-input">
-    <input id="user_input" type="text" placeholder="상품에 대해 궁금한 점 질문해주세요." autocomplete="off">
-    <button onclick="sendMsg()">📤</button>
-  </div>
-</div>
+  <div class="chat-body">{chat_body_html}</div>
 
-<script>
-function sendMsg() {{
-  const val = document.getElementById("user_input").value;
-  if (!val.trim()) return;
-  window.parent.postMessage({{type: "chat_message", text: val}}, "*");
-  document.getElementById("user_input").value = "";
-}}
-</script>
+  <!-- ✅ 수정된 입력 폼 -->
+  <form class="chat-input" method="get" action="">
+    <input type="text" name="text" placeholder="상품에 대해 궁금한 점 질문해주세요." autocomplete="off" required>
+    <button type="submit">📤</button>
+  </form>
+</div>
 </body>
 </html>
 """
+
 
 # =========================
 # 📩 메시지 수신 처리
