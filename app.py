@@ -1,4 +1,4 @@
-# app.py — 보험 약관 RAG 챗봇 (HTML UI + GPT-5 + Supabase pgvector, 모바일 대응 안정 버전)
+# app.py — 보험 약관 RAG 챗봇 (HTML UI + GPT-5 + Supabase pgvector, 모바일 대응 최종 완전버전)
 import os, json, time, numpy as np, psycopg, pandas as pd, streamlit as st
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -27,6 +27,8 @@ if "messages" not in st.session_state:
     st.session_state.messages = [
         {"role": "assistant", "content": "안녕하세요! 무엇을 도와드릴까요?"}
     ]
+if "input" not in st.session_state:
+    st.session_state.input = None
 
 # =========================
 # 📦 DB 연결 함수
@@ -196,19 +198,23 @@ body {{
   </div>
   <div class="chat-body" id="chat-body">{chat_body_html}</div>
 
-  <form class="chat-input" id="chatForm" onsubmit="handleSubmit(event)">
-    <input id="user_input" type="text" name="text" placeholder="상품에 대해 궁금한 점 질문해주세요." autocomplete="off" required>
+  <form class="chat-input" id="chatForm" onsubmit="sendMessage(event)">
+    <input id="user_input" type="text" placeholder="상품에 대해 궁금한 점 질문해주세요." autocomplete="off" required>
     <button type="submit">📤</button>
   </form>
 
   <script>
-  function handleSubmit(event) {{
-      event.preventDefault();
-      const val = document.getElementById("user_input").value.trim();
-      if (!val) return;
-      const url = new URL(window.location.href);
-      url.searchParams.set("text", val);
-      window.location.href = url.toString();
+  function sendMessage(event) {{
+    event.preventDefault();
+    const val = document.getElementById("user_input").value.trim();
+    if (!val) return;
+    // ✅ Streamlit Python으로 안전하게 전달
+    window.parent.postMessage({{
+      isStreamlitMessage: true,
+      type: "streamlit:setComponentValue",
+      value: val
+    }}, "*");
+    document.getElementById("user_input").value = "";
   }}
   </script>
 </div>
@@ -217,15 +223,21 @@ body {{
 """
 
 # =========================
-# 📩 메시지 수신 및 처리
+# 📩 HTML 렌더링 및 이벤트 수신
 # =========================
-components.html(html_code, height=800, scrolling=False)
+input_text = components.html(html_code, height=800, scrolling=False, allow_scripts=True)
 
-query_text = st.query_params.get("text")
-if query_text:
-    user_input = query_text
+# Streamlit이 내부적으로 메시지를 받으면 `input_text`가 문자열로 세팅됨
+if isinstance(input_text, str) and input_text.strip():
+    st.session_state.input = input_text.strip()
+
+# =========================
+# 💬 입력 처리
+# =========================
+if st.session_state.input:
+    user_input = st.session_state.input
     st.session_state.messages.append({"role": "user", "content": user_input})
     answer = generate_answer(user_input)
     st.session_state.messages.append({"role": "assistant", "content": answer})
-    st.query_params.clear()
+    st.session_state.input = None
     st.rerun()
