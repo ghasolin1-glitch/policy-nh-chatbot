@@ -227,7 +227,7 @@ function sendMsg() {{
 # 📩 메시지 수신 처리
 # =========================
 message = components.html(html_code, height=800, scrolling=False)
-event = st.experimental_get_query_params().get("text")
+event = st.query_params.get("text")
 
 if event:
     user_input = event
