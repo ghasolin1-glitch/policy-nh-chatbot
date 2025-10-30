@@ -203,18 +203,17 @@ body {{
   </form>
 
   <script>
-  function sendMessage(event) {
+  function sendMessage(event) {{
     event.preventDefault();
     const val = document.getElementById("user_input").value.trim();
     if (!val) return;
 
     // Streamlit 컴포넌트로 메시지 전송
-    window.parent.postMessage({type: "streamlit:setComponentValue", value: val}, "*");
+    window.parent.postMessage({{type: "streamlit:setComponentValue", value: val}}, "*");
 
     document.getElementById("user_input").value = "";
-  }
+  }}
   </script>
-
 </div>
 </body>
 </html>
