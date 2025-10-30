@@ -1,23 +1,15 @@
-# app.py — 보험 약관 RAG 챗봇 (NHLife 스타일 UI, GPT-5 + Supabase pgvector)
-import os
-import json
-import time
-import typing as t
-import numpy as np
-import psycopg
-import pandas as pd
-import streamlit as st
+# app.py — 보험 약관 RAG 챗봇 (HTML UI + GPT-5 + Supabase pgvector)
+import os, json, time, typing as t, numpy as np, psycopg, pandas as pd, streamlit as st
 from dotenv import load_dotenv
 from openai import OpenAI
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_core.documents import Document
+import streamlit.components.v1 as components
 
 # =========================
 # 🔧 환경 변수
 # =========================
 load_dotenv()
-
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
 DB_HOST = os.getenv("DB_HOST") or st.secrets.get("DB_HOST")
 DB_PORT = int(os.getenv("DB_PORT") or st.secrets.get("DB_PORT", 5432))
@@ -35,114 +27,10 @@ if missing:
     st.stop()
 
 client = OpenAI(api_key=OPENAI_API_KEY)
-model = ChatOpenAI(model='gpt-5', reasoning_effort='minimal', api_key=OPENAI_API_KEY)
+model = ChatOpenAI(model="gpt-5", reasoning_effort="minimal", api_key=OPENAI_API_KEY)
 
 # =========================
-# 🧱 Streamlit UI 설정
-# =========================
-st.set_page_config(page_title="약관챗봇", page_icon="📘", layout="centered")
-
-st.markdown("""
-<style>
-    /* 전체 배경 */
-    body { background-color: #f3f4f6; }
-
-    /* 헤더 */
-    .chat-header {
-        background-color: #2563eb;
-        color: white;
-        padding: 16px;
-        border-radius: 10px 10px 0 0;
-        text-align: left;
-        font-family: Pretendard, sans-serif;
-    }
-    .chat-header h1 {
-        font-size: 1.5rem;
-        font-weight: bold;
-        margin: 0;
-    }
-    .chat-header p {
-        font-size: 0.8rem;
-        color: #bfdbfe;
-        margin: 0;
-    }
-
-    /* 채팅 영역 */
-    .chat-box {
-        background-color: white;
-        height: 550px;
-        overflow-y: auto;
-        padding: 16px;
-        border-radius: 0 0 10px 10px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    }
-
-    /* 말풍선 */
-    .bubble {
-        padding: 10px 14px;
-        border-radius: 20px;
-        margin-bottom: 8px;
-        max-width: 80%;
-        display: inline-block;
-        word-wrap: break-word;
-        line-height: 1.5;
-    }
-
-    /* 사용자 말풍선 (오른쪽) */
-    .user-bubble {
-        background-color: #2563eb;
-        color: white;
-        border-bottom-right-radius: 4px;
-        float: right;
-        clear: both;
-    }
-
-    /* 챗봇 말풍선 (왼쪽) */
-    .bot-bubble {
-        background-color: #e5e7eb;
-        color: #111827;
-        border-bottom-left-radius: 4px;
-        float: left;
-        clear: both;
-    }
-
-    .timestamp {
-        font-size: 0.7rem;
-        color: #9ca3af;
-        margin-top: 2px;
-    }
-
-    /* 입력창 */
-    .input-box {
-        display: flex;
-        margin-top: 10px;
-        gap: 8px;
-    }
-    .input-box input {
-        flex: 1;
-        padding: 10px 16px;
-        border-radius: 999px;
-        border: 1px solid #d1d5db;
-        outline: none;
-    }
-    .input-box button {
-        background-color: #2563eb;
-        color: white;
-        border: none;
-        border-radius: 50%;
-        width: 44px;
-        height: 44px;
-        font-size: 1.2rem;
-        cursor: pointer;
-    }
-    .input-box button:hover {
-        background-color: #1d4ed8;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# =========================
-# 📦 세션 상태 관리
+# 📦 세션 상태
 # =========================
 if "messages" not in st.session_state:
     st.session_state.messages = [
@@ -150,7 +38,7 @@ if "messages" not in st.session_state:
     ]
 
 # =========================
-# 📦 DB 연결 및 검색 함수
+# 📦 DB 설정
 # =========================
 DB_CONN = {
     "host": DB_HOST,
@@ -214,57 +102,125 @@ def generate_answer(question: str) -> str:
         resp = model.invoke(msgs)
         return resp.content
     except Exception as e:
-        return f"오류가 발생했습니다: {e}"
-# ... (위쪽 기존 코드 동일)
+        return f"⚠️ 오류가 발생했습니다: {e}"
 
 # =========================
-# 🚀 UI 출력
+# 🖥️ HTML UI 렌더링
 # =========================
-st.markdown("""
-<div style='
-    width: 100%;
-    max-width: 480px;
-    margin: 0 auto;
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    overflow: hidden;
-'>
-    <div class="chat-header">
-        <h1>약관챗봇</h1>
-        <p>NHLife | Made by 태훈,현철</p>
-    </div>
-    <div class="chat-box">
-""", unsafe_allow_html=True)
+chat_body_html = ''.join([
+    f"<div class='{'user-bubble' if m['role']=='user' else 'bot-bubble'} bubble'>{m['content']}</div>"
+    for m in st.session_state.messages
+])
 
-# ===== 채팅 메시지 출력 =====
-for msg in st.session_state.messages:
-    if msg["role"] == "user":
-        st.markdown(f"""
-        <div style='text-align:right; margin-bottom:8px;'>
-            <div class='bubble user-bubble'>{msg['content']}</div>
-            <div class='timestamp'>{time.strftime('%H:%M')}</div>
-        </div>
-        """, unsafe_allow_html=True)
-    else:
-        st.markdown(f"""
-        <div style='text-align:left; margin-bottom:8px;'>
-            <div class='bubble bot-bubble'>{msg['content']}</div>
-            <div class='timestamp'>{time.strftime('%H:%M')}</div>
-        </div>
-        """, unsafe_allow_html=True)
+html_code = f"""
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+body {{
+  background-color: #f3f4f6;
+  font-family: 'Pretendard', 'Inter', sans-serif;
+}}
+.chat-container {{
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
+  height: 85vh;
+  overflow: hidden;
+}}
+.chat-header {{
+  background-color: #2563eb;
+  color: white;
+  padding: 16px;
+}}
+.chat-header h1 {{
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin: 0;
+}}
+.chat-header p {{
+  font-size: 0.8rem;
+  color: #bfdbfe;
+  margin: 0;
+}}
+.chat-body {{
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}}
+.bubble {{
+  padding: 10px 14px;
+  border-radius: 20px;
+  margin-bottom: 10px;
+  max-width: 80%;
+  line-height: 1.5;
+  word-wrap: break-word;
+}}
+.user-bubble {{
+  background-color: #2563eb;
+  color: white;
+  border-bottom-right-radius: 4px;
+  margin-left: auto;
+}}
+.bot-bubble {{
+  background-color: #e5e7eb;
+  color: #111827;
+  border-bottom-left-radius: 4px;
+  margin-right: auto;
+}}
+.chat-input {{
+  border-top: 1px solid #e5e7eb;
+  padding: 12px;
+  display: flex;
+  gap: 8px;
+}}
+.chat-input input {{
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+}}
+.chat-input button {{
+  background-color: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  font-size: 1.2rem;
+  cursor: pointer;
+}}
+</style>
+</head>
+<body>
+<div class="chat-container">
+  <div class="chat-header">
+    <h1>약관챗봇</h1>
+    <p>NHLife | Made by 태훈,현철</p>
+  </div>
+  <div class="chat-body" id="chat-body">{chat_body_html}</div>
+</div>
+</body>
+</html>
+"""
 
-# ===== 입력창 (박스 내부에 포함) =====
-st.markdown("</div>", unsafe_allow_html=True)
+components.html(html_code, height=800, scrolling=False)
+
+# =========================
+# ✏️ 입력창 (Streamlit 폼)
+# =========================
 with st.form("chat_input", clear_on_submit=True):
-    st.markdown('<div class="input-box">', unsafe_allow_html=True)
     user_input = st.text_input("", placeholder="상품에 대해 궁금한 점 질문해주세요.", label_visibility="collapsed")
-    submit = st.form_submit_button("📤")
-    st.markdown("</div>", unsafe_allow_html=True)
-st.markdown("</div>", unsafe_allow_html=True)  # 전체 div 닫기
+    submitted = st.form_submit_button("📤")
 
-# ===== 채팅 입력 처리 =====
-if submit and user_input:
+if submitted and user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
     answer = generate_answer(user_input)
     st.session_state.messages.append({"role": "assistant", "content": answer})
