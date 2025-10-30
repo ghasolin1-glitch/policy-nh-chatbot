@@ -197,10 +197,23 @@ body {{
   <div class="chat-body">{chat_body_html}</div>
 
   <!-- ✅ 수정된 입력 폼 -->
-  <form class="chat-input" method="get" action="">
-    <input type="text" name="text" placeholder="상품에 대해 궁금한 점 질문해주세요." autocomplete="off" required>
+  <form class="chat-input" id="chatForm" onsubmit="handleSubmit(event)">
+    <input id="user_input" type="text" name="text" placeholder="상품에 대해 궁금한 점 질문해주세요." autocomplete="off" required>
     <button type="submit">📤</button>
   </form>
+
+  <script>
+  function handleSubmit(event) {
+      event.preventDefault(); // 기존 submit 중단
+      const val = document.getElementById("user_input").value.trim();
+      if (!val) return;
+      // 현재 페이지 URL에 쿼리파라미터 추가해서 새로고침
+      const url = new URL(window.location.href);
+      url.searchParams.set("text", val);
+      window.location.href = url.toString();
+  }
+  </script>
+
 </div>
 </body>
 </html>
