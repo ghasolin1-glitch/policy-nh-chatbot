@@ -1,4 +1,4 @@
-# app.py — 보험 약관 RAG 챗봇 (HTML UI + GPT-5 + Supabase pgvector, 모바일 대응 완전 버전)
+# app.py — 보험 약관 RAG 챗봇 (HTML UI + GPT-5 + Supabase pgvector, 모바일 대응 안정 버전)
 import os, json, time, numpy as np, psycopg, pandas as pd, streamlit as st
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -196,22 +196,21 @@ body {{
   </div>
   <div class="chat-body" id="chat-body">{chat_body_html}</div>
 
-  <form class="chat-input" id="chatForm" onsubmit="sendMessage(event)">
-    <input id="user_input" type="text" placeholder="상품에 대해 궁금한 점 질문해주세요." autocomplete="off" required>
+  <form class="chat-input" id="chatForm" onsubmit="handleSubmit(event)">
+    <input id="user_input" type="text" name="text" placeholder="상품에 대해 궁금한 점 질문해주세요." autocomplete="off" required>
     <button type="submit">📤</button>
   </form>
 
   <script>
-  function sendMessage(event) {{
-    event.preventDefault();
-    const val = document.getElementById("user_input").value.trim();
-    if (!val) return;
-    // ✅ Streamlit에 값 전달
-    window.parent.postMessage({{isStreamlitMessage: true, type: "streamlit:setComponentValue", value: val}}, "*");
-    document.getElementById("user_input").value = "";
+  function handleSubmit(event) {{
+      event.preventDefault();
+      const val = document.getElementById("user_input").value.trim();
+      if (!val) return;
+      const url = new URL(window.location.href);
+      url.searchParams.set("text", val);
+      window.location.href = url.toString();
   }}
   </script>
-
 </div>
 </body>
 </html>
@@ -220,10 +219,13 @@ body {{
 # =========================
 # 📩 메시지 수신 및 처리
 # =========================
-user_input = components.html(html_code, height=800, scrolling=False, allow_scripts=True)
+components.html(html_code, height=800, scrolling=False)
 
-if user_input:
+query_text = st.query_params.get("text")
+if query_text:
+    user_input = query_text
     st.session_state.messages.append({"role": "user", "content": user_input})
     answer = generate_answer(user_input)
     st.session_state.messages.append({"role": "assistant", "content": answer})
+    st.query_params.clear()
     st.rerun()
