@@ -1,4 +1,4 @@
-# app.py — 보험 약관 RAG 챗봇 (HTML UI + GPT-5 + Supabase pgvector)
+# app.py — 보험 약관 RAG 챗봇 (HTML UI + GPT-5 + Supabase pgvector, 모바일 대응)
 import os, json, time, typing as t, numpy as np, psycopg, pandas as pd, streamlit as st
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -17,15 +17,6 @@ DB_NAME = os.getenv("DB_NAME") or st.secrets.get("DB_NAME")
 DB_USER = os.getenv("DB_USER") or st.secrets.get("DB_USER")
 DB_PASS = os.getenv("DB_PASS") or st.secrets.get("DB_PASS")
 
-missing = [k for k, v in {
-    "OPENAI_API_KEY": OPENAI_API_KEY,
-    "DB_HOST": DB_HOST, "DB_PORT": DB_PORT,
-    "DB_NAME": DB_NAME, "DB_USER": DB_USER, "DB_PASS": DB_PASS
-}.items() if not v]
-if missing:
-    st.error(f"환경 변수 누락: {', '.join(missing)}")
-    st.stop()
-
 client = OpenAI(api_key=OPENAI_API_KEY)
 model = ChatOpenAI(model="gpt-5", reasoning_effort="minimal", api_key=OPENAI_API_KEY)
 
@@ -38,7 +29,7 @@ if "messages" not in st.session_state:
     ]
 
 # =========================
-# 📦 DB 설정
+# 📦 DB 연결 함수
 # =========================
 DB_CONN = {
     "host": DB_HOST,
@@ -105,12 +96,13 @@ def generate_answer(question: str) -> str:
         return f"⚠️ 오류가 발생했습니다: {e}"
 
 # =========================
-# 🖥️ HTML UI 렌더링
+# 🖥️ HTML UI
 # =========================
 chat_body_html = ''.join([
     f"<div class='{'user-bubble' if m['role']=='user' else 'bot-bubble'} bubble'>{m['content']}</div>"
     for m in st.session_state.messages
 ])
+
 html_code = f"""
 <!DOCTYPE html>
 <html lang="ko">
@@ -124,8 +116,8 @@ body {{
   font-family: 'Pretendard', 'Inter', sans-serif;
   height: 100vh;
   display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: center;
 }}
 .chat-container {{
   width: 100%;
@@ -138,14 +130,50 @@ body {{
   flex-direction: column;
   overflow: hidden;
 }}
+.chat-header {{
+  background-color: #2563eb;
+  color: white;
+  padding: 16px;
+}}
+.chat-header h1 {{
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin: 0;
+}}
+.chat-header p {{
+  font-size: 0.8rem;
+  color: #bfdbfe;
+  margin: 0;
+}}
 .chat-body {{
   flex: 1;
   overflow-y: auto;
   padding: 16px;
+  background: white;
+}}
+.bubble {{
+  padding: 10px 14px;
+  border-radius: 20px;
+  margin-bottom: 10px;
+  max-width: 80%;
+  line-height: 1.5;
+  word-wrap: break-word;
+}}
+.user-bubble {{
+  background-color: #2563eb;
+  color: white;
+  border-bottom-right-radius: 4px;
+  margin-left: auto;
+}}
+.bot-bubble {{
+  background-color: #e5e7eb;
+  color: #111827;
+  border-bottom-left-radius: 4px;
+  margin-right: auto;
 }}
 .chat-input {{
   border-top: 1px solid #e5e7eb;
-  padding: 10px;
+  padding: 12px;
   display: flex;
   gap: 8px;
   position: sticky;
@@ -176,23 +204,18 @@ body {{
     <h1>약관챗봇</h1>
     <p>NHLife | Made by 태훈,현철</p>
   </div>
-  <div class="chat-body" id="chat-body">
-    {''.join([
-      f"<div class='{'user-bubble' if m['role']=='user' else 'bot-bubble'} bubble'>{m['content']}</div>"
-      for m in st.session_state.messages
-    ])}
-  </div>
-  <form class="chat-input" onsubmit="sendMsg(); return false;">
+  <div class="chat-body" id="chat-body">{chat_body_html}</div>
+  <div class="chat-input">
     <input id="user_input" type="text" placeholder="상품에 대해 궁금한 점 질문해주세요." autocomplete="off">
-    <button type="submit">📤</button>
-  </form>
+    <button onclick="sendMsg()">📤</button>
+  </div>
 </div>
 
 <script>
 function sendMsg() {{
   const val = document.getElementById("user_input").value;
   if (!val.trim()) return;
-  window.parent.postMessage({{streamlitSendMessage: val}}, "*");
+  window.parent.postMessage({{type: "chat_message", text: val}}, "*");
   document.getElementById("user_input").value = "";
 }}
 </script>
@@ -200,17 +223,14 @@ function sendMsg() {{
 </html>
 """
 
-
-components.html(html_code, height=800, scrolling=False)
-
 # =========================
-# ✏️ 입력창 (Streamlit 폼)
+# 📩 메시지 수신 처리
 # =========================
-with st.form("chat_input", clear_on_submit=True):
-    user_input = st.text_input("", placeholder="상품에 대해 궁금한 점 질문해주세요.", label_visibility="collapsed")
-    submitted = st.form_submit_button("📤")
+message = components.html(html_code, height=800, scrolling=False)
+event = st.experimental_get_query_params().get("text")
 
-if submitted and user_input:
+if event:
+    user_input = event
     st.session_state.messages.append({"role": "user", "content": user_input})
     answer = generate_answer(user_input)
     st.session_state.messages.append({"role": "assistant", "content": answer})
