@@ -1,4 +1,4 @@
-# app.py — 보험 약관 RAG 챗봇 (HTML UI + GPT-5 + Supabase pgvector)
+# app.py — 보험 약관 RAG 챗봇 (HTML UI + GPT-5 + Supabase pgvector, 모바일 대응 완전 버전)
 import os, json, time, numpy as np, psycopg, pandas as pd, streamlit as st
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -96,7 +96,7 @@ def generate_answer(question: str) -> str:
         return f"⚠️ 오류가 발생했습니다: {e}"
 
 # =========================
-# 🖥️ HTML UI
+# 🖥️ HTML UI (Tailwind + JS)
 # =========================
 chat_body_html = ''.join([
     f"<div class='{'user-bubble' if m['role']=='user' else 'bot-bubble'} bubble'>{m['content']}</div>"
@@ -196,20 +196,19 @@ body {{
   </div>
   <div class="chat-body" id="chat-body">{chat_body_html}</div>
 
-  <!-- ✅ 폼 방식 (엔터/버튼 모두 작동) -->
-  <form class="chat-input" id="chatForm" onsubmit="handleSubmit(event)">
-    <input id="user_input" type="text" name="text" placeholder="상품에 대해 궁금한 점 질문해주세요." autocomplete="off" required>
+  <form class="chat-input" id="chatForm" onsubmit="sendMessage(event)">
+    <input id="user_input" type="text" placeholder="상품에 대해 궁금한 점 질문해주세요." autocomplete="off" required>
     <button type="submit">📤</button>
   </form>
 
   <script>
-  function handleSubmit(event) {{
-      event.preventDefault();
-      const val = document.getElementById("user_input").value.trim();
-      if (!val) return;
-      const url = new URL(window.location.href);
-      url.searchParams.set("text", val);
-      window.location.href = url.toString();
+  function sendMessage(event) {{
+    event.preventDefault();
+    const val = document.getElementById("user_input").value.trim();
+    if (!val) return;
+    // ✅ Streamlit에 값 전달
+    window.parent.postMessage({{isStreamlitMessage: true, type: "streamlit:setComponentValue", value: val}}, "*");
+    document.getElementById("user_input").value = "";
   }}
   </script>
 
@@ -219,15 +218,12 @@ body {{
 """
 
 # =========================
-# 📩 메시지 수신 처리
+# 📩 메시지 수신 및 처리
 # =========================
-components.html(html_code, height=800, scrolling=False)
-event = st.query_params.get("text")
+user_input = components.html(html_code, height=800, scrolling=False, allow_scripts=True)
 
-if event:
-    user_input = event
+if user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
     answer = generate_answer(user_input)
     st.session_state.messages.append({"role": "assistant", "content": answer})
-    st.query_params.clear()
     st.rerun()
