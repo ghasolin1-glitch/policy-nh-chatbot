@@ -1,5 +1,4 @@
-# app.py — 보험 약관 RAG 챗봇 (HTML UI + GPT-5 + Supabase pgvector, 모바일 대응)
-import os, json, time, typing as t, numpy as np, psycopg, pandas as pd, streamlit as st
+import os, json, time, numpy as np, psycopg, pandas as pd, streamlit as st
 from dotenv import load_dotenv
 from openai import OpenAI
 from langchain_openai import ChatOpenAI
@@ -194,11 +193,11 @@ body {{
     <h1>약관챗봇</h1>
     <p>NHLife | Made by 태훈,현철</p>
   </div>
-  <div class="chat-body">{chat_body_html}</div>
+  <div class="chat-body" id="chat-body">{chat_body_html}</div>
 
-  <!-- ✅ 수정된 입력 폼 -->
-  <form class="chat-input" id="chatForm" onsubmit="handleSubmit(event)">
-    <input id="user_input" type="text" name="text" placeholder="상품에 대해 궁금한 점 질문해주세요." autocomplete="off" required>
+  <!-- ✅ 입력 폼 -->
+  <form class="chat-input" id="chatForm" onsubmit="sendMessage(event)">
+    <input id="user_input" type="text" placeholder="상품에 대해 궁금한 점 질문해주세요." autocomplete="off" required>
     <button type="submit">📤</button>
   </form>
 
@@ -207,24 +206,19 @@ body {{
     event.preventDefault();
     const val = document.getElementById("user_input").value.trim();
     if (!val) return;
-
-    // Streamlit 컴포넌트로 메시지 전송
-    window.parent.postMessage({{type: "streamlit:setComponentValue", value: val}}, "*");
-
+    Streamlit.setComponentValue(val);
     document.getElementById("user_input").value = "";
   }}
   </script>
+
 </div>
 </body>
 </html>
 """
 
-
-# =========================
-# 📩 메시지 수신 처리
-# =========================
-message = components.html(html_code, height=800, scrolling=False)
-message = components.html(html_code, height=800, scrolling=False, key="chat_ui")
+# ✅ declare_component로 사용자 입력 받기
+chat_component = components.declare_component("chat_component", url=None)
+message = chat_component(html_code, default="")
 
 if message:
     user_input = message
