@@ -85,6 +85,7 @@ def generate_answer(question: str) -> str:
         return resp.content
     except Exception as e:
         return f"⚠️ 오류가 발생했습니다: {e}"
+    
 # =========================
 # 🎨 UI 구성 (Streamlit)
 # =========================
@@ -92,15 +93,17 @@ st.markdown("""
 <style>
 body { background-color: #f3f4f6; font-family: Pretendard, Inter, sans-serif; }
 
-/* 채팅 박스 기본 스타일 */
+/* 채팅 박스 */
 .chat-box {
-    background: white; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    background: white; border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     width: 100%; max-width: 480px; margin: auto; padding: 16px;
 }
 
-/* 헤더 축소 (위아래 길이 80%) */
+/* 타이틀 박스 - 높이 80% */
 .chat-header {
-    background-color: #2563eb; color: white; padding: 10px 16px;  /* 축소됨 */
+    background-color: #2563eb; color: white;
+    padding: 8px 14px;          /* 위아래 padding 줄임 (80%) */
     border-radius: 8px; margin-bottom: 10px;
     text-align: center;
 }
@@ -121,7 +124,7 @@ body { background-color: #f3f4f6; font-family: Pretendard, Inter, sans-serif; }
     box-shadow: 0 2px 6px rgba(0,0,0,0.1);
 }
 
-/* 입력창 말풍선 스타일 */
+/* 입력창 */
 .chat-input {
     border: 2px solid #2563eb; border-radius: 20px;
     padding: 10px 16px; width: 100%;
@@ -129,9 +132,10 @@ body { background-color: #f3f4f6; font-family: Pretendard, Inter, sans-serif; }
     box-shadow: 0 2px 6px rgba(37,99,235,0.25);
 }
 
-/* 실행 버튼 중앙 배치 */
+/* 보내기 버튼 중앙 정렬 */
 .send-btn {
-    display: flex; justify-content: center;
+    display: flex;
+    justify-content: center;  /* 가운데 정렬 */
     margin-top: 10px;
 }
 </style>
@@ -140,18 +144,15 @@ body { background-color: #f3f4f6; font-family: Pretendard, Inter, sans-serif; }
 
 with st.container():
     st.markdown("<div class='chat-box'>", unsafe_allow_html=True)
-    st.markdown("<div class='chat-header'><h3>약관챗봇</h3><p>NHLife | Made by 태훈,현철</p></div>", unsafe_allow_html=True)
+    st.markdown("<div class='chat-header'><h3>보험약관 챗봇</h3><p>NHLife | Made by 태훈,현철</p></div>", unsafe_allow_html=True)
 
-    # 대화 내역 표시
     for msg in st.session_state.messages:
         bubble_class = "user-bubble" if msg["role"] == "user" else "bot-bubble"
         st.markdown(f"<div class='{bubble_class}'>{msg['content']}</div>", unsafe_allow_html=True)
 
     st.markdown("<hr>", unsafe_allow_html=True)
-
-    # 입력 폼 (말풍선형 input + 중앙 버튼)
     with st.form("chat_form", clear_on_submit=True):
-        user_input = st.text_input("", placeholder="상품에 대해 궁금한 점 질문해주세요.", label_visibility="collapsed", key="chat_input")
+        user_input = st.text_input("", placeholder="상품에 대해 궁금한 점 질문해주세요.", label_visibility="collapsed")
         st.markdown("<div class='send-btn'>", unsafe_allow_html=True)
         submitted = st.form_submit_button("📎 보내기")
         st.markdown("</div>", unsafe_allow_html=True)
