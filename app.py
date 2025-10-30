@@ -85,49 +85,93 @@ def generate_answer(question: str) -> str:
         return resp.content
     except Exception as e:
         return f"⚠️ 오류가 발생했습니다: {e}"
-
 # =========================
 # 🎨 UI 구성 (Streamlit)
 # =========================
 st.markdown("""
 <style>
 body { background-color: #f3f4f6; font-family: Pretendard, Inter, sans-serif; }
+
+/* 채팅 박스 기본 스타일 */
 .chat-box {
     background: white; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     width: 100%; max-width: 480px; margin: auto; padding: 16px;
 }
-.chat-header { background-color: #2563eb; color: white; padding: 16px; border-radius: 8px; margin-bottom: 12px; }
+
+/* 헤더 축소 (위아래 길이 80%) */
+.chat-header {
+    background-color: #2563eb; color: white; padding: 10px 16px;  /* 축소됨 */
+    border-radius: 8px; margin-bottom: 10px;
+    text-align: center;
+}
+
+/* 말풍선 스타일 */
 .user-bubble {
-    background-color: #2563eb; color: white; border-radius: 20px; padding: 10px 14px;
-    margin-bottom: 8px; margin-left: auto; max-width: 80%;
+    background-color: #2563eb; color: white;
+    border-radius: 20px 20px 0 20px;
+    padding: 10px 14px; margin-bottom: 8px;
+    margin-left: auto; max-width: 80%;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
 }
 .bot-bubble {
-    background-color: #e5e7eb; color: #111827; border-radius: 20px; padding: 10px 14px;
-    margin-bottom: 8px; margin-right: auto; max-width: 80%;
+    background-color: #e5e7eb; color: #111827;
+    border-radius: 20px 20px 20px 0;
+    padding: 10px 14px; margin-bottom: 8px;
+    margin-right: auto; max-width: 80%;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+/* 입력창 말풍선 스타일 */
+.chat-input {
+    border: 2px solid #2563eb; border-radius: 20px;
+    padding: 10px 16px; width: 100%;
+    font-size: 15px; outline: none;
+    box-shadow: 0 2px 6px rgba(37,99,235,0.25);
+}
+
+/* 실행 버튼 중앙 배치 */
+.send-btn {
+    display: flex; justify-content: center;
+    margin-top: 10px;
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 with st.container():
     st.markdown("<div class='chat-box'>", unsafe_allow_html=True)
     st.markdown("<div class='chat-header'><h3>약관챗봇</h3><p>NHLife | Made by 태훈,현철</p></div>", unsafe_allow_html=True)
 
+    # 대화 내역 표시
     for msg in st.session_state.messages:
         bubble_class = "user-bubble" if msg["role"] == "user" else "bot-bubble"
         st.markdown(f"<div class='{bubble_class}'>{msg['content']}</div>", unsafe_allow_html=True)
 
     st.markdown("<hr>", unsafe_allow_html=True)
+
+    # 입력 폼 (말풍선형 input + 중앙 버튼)
     with st.form("chat_form", clear_on_submit=True):
-        user_input = st.text_input("", placeholder="상품에 대해 궁금한 점 질문해주세요.", label_visibility="collapsed")
-        submitted = st.form_submit_button("📤")
+        user_input = st.text_input("", placeholder="상품에 대해 궁금한 점 질문해주세요.", label_visibility="collapsed", key="chat_input")
+        st.markdown("<div class='send-btn'>", unsafe_allow_html=True)
+        submitted = st.form_submit_button("📎 보내기")
+        st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("</div>", unsafe_allow_html=True)
+
 
 # =========================
 # 💬 입력 처리
 # =========================
 if submitted and user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
-    answer = generate_answer(user_input)
-    st.session_state.messages.append({"role": "assistant", "content": answer})
+    # 답변 생성 전 파란색 박스 표시
+    with st.spinner("💙 약관 내용을 검토 중입니다..."):
+        st.session_state.messages.append({"role": "assistant", "content": "답변을 생성 중입니다. 잠시만 기다려주세요 💬"})
+        st.rerun()
+
+if len(st.session_state.messages) >= 2 and st.session_state.messages[-1]["content"].startswith("답변을 생성 중"):
+    # 실제 답변 생성
+    question = st.session_state.messages[-2]["content"]
+    answer = generate_answer(question)
+    st.session_state.messages[-1] = {"role": "assistant", "content": answer}
     st.rerun()
