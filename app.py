@@ -215,30 +215,55 @@ def generate_answer(question: str) -> str:
         return resp.content
     except Exception as e:
         return f"오류가 발생했습니다: {e}"
+# ... (위쪽 기존 코드 동일)
 
 # =========================
 # 🚀 UI 출력
 # =========================
-st.markdown('<div class="chat-header"><h1>약관챗봇</h1><p>NHLife | Made by 태훈,현철</p></div>', unsafe_allow_html=True)
-st.markdown('<div class="chat-box">', unsafe_allow_html=True)
+st.markdown("""
+<div style='
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    overflow: hidden;
+'>
+    <div class="chat-header">
+        <h1>약관챗봇</h1>
+        <p>NHLife | Made by 태훈,현철</p>
+    </div>
+    <div class="chat-box">
+""", unsafe_allow_html=True)
 
+# ===== 채팅 메시지 출력 =====
 for msg in st.session_state.messages:
     if msg["role"] == "user":
-        st.markdown(f"<div class='bubble user-bubble'>{msg['content']}</div><div class='timestamp' style='text-align:right'>{time.strftime('%H:%M')}</div>", unsafe_allow_html=True)
+        st.markdown(f"""
+        <div style='text-align:right; margin-bottom:8px;'>
+            <div class='bubble user-bubble'>{msg['content']}</div>
+            <div class='timestamp'>{time.strftime('%H:%M')}</div>
+        </div>
+        """, unsafe_allow_html=True)
     else:
-        st.markdown(f"<div class='bubble bot-bubble'>{msg['content']}</div><div class='timestamp'>{time.strftime('%H:%M')}</div>", unsafe_allow_html=True)
+        st.markdown(f"""
+        <div style='text-align:left; margin-bottom:8px;'>
+            <div class='bubble bot-bubble'>{msg['content']}</div>
+            <div class='timestamp'>{time.strftime('%H:%M')}</div>
+        </div>
+        """, unsafe_allow_html=True)
 
+# ===== 입력창 (박스 내부에 포함) =====
 st.markdown("</div>", unsafe_allow_html=True)
-
-# =========================
-# ✉️ 입력창 (하단)
-# =========================
 with st.form("chat_input", clear_on_submit=True):
     st.markdown('<div class="input-box">', unsafe_allow_html=True)
     user_input = st.text_input("", placeholder="상품에 대해 궁금한 점 질문해주세요.", label_visibility="collapsed")
     submit = st.form_submit_button("📤")
     st.markdown("</div>", unsafe_allow_html=True)
+st.markdown("</div>", unsafe_allow_html=True)  # 전체 div 닫기
 
+# ===== 채팅 입력 처리 =====
 if submit and user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
     answer = generate_answer(user_input)
