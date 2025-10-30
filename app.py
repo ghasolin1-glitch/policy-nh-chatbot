@@ -203,14 +203,15 @@ body {{
   </form>
 
   <script>
-  function handleSubmit(event) {
-      event.preventDefault(); // 기존 submit 중단
-      const val = document.getElementById("user_input").value.trim();
-      if (!val) return;
-      // 현재 페이지 URL에 쿼리파라미터 추가해서 새로고침
-      const url = new URL(window.location.href);
-      url.searchParams.set("text", val);
-      window.location.href = url.toString();
+  function sendMessage(event) {
+    event.preventDefault();
+    const val = document.getElementById("user_input").value.trim();
+    if (!val) return;
+
+    // Streamlit 컴포넌트로 메시지 전송
+    window.parent.postMessage({type: "streamlit:setComponentValue", value: val}, "*");
+
+    document.getElementById("user_input").value = "";
   }
   </script>
 
@@ -224,10 +225,10 @@ body {{
 # 📩 메시지 수신 처리
 # =========================
 message = components.html(html_code, height=800, scrolling=False)
-event = st.query_params.get("text")
+message = components.html(html_code, height=800, scrolling=False, key="chat_ui")
 
-if event:
-    user_input = event
+if message:
+    user_input = message
     st.session_state.messages.append({"role": "user", "content": user_input})
     answer = generate_answer(user_input)
     st.session_state.messages.append({"role": "assistant", "content": answer})
